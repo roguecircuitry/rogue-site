@@ -1,10 +1,11 @@
 
 import { Panel, get, Component, DualPanel, runOnce, ImagePanel, Button } from "@repcomm/exponent-ts";
-import { Exponent } from "@repcomm/exponent-ts/lib/exponent";
 
 import { API } from "./api";
 import { ProjectPanel } from "./components/projectpanel";
 import { StatusBar } from "./components/statusbar";
+
+import { DateHelper } from "./datehelper";
 
 runOnce();
 
@@ -44,6 +45,7 @@ let styles = new Component()
     font-size: medium;
   }
   #login-btn {
+    transition: all 0.5s cubic-bezier(0.08, 0.82, 0.17, 1);
     background-color: #212635;
     color: inherit;
     margin: 0.3em;
@@ -70,7 +72,7 @@ let styles = new Component()
     background-color: #62afb3;
   }
   #status-bar > .status-display:nth-child(3n+2) {
-    background-color: #9d8731;
+    background-color: #4ec191;
   }
   #status-bar > .status-display:nth-child(3n+3) {
     background-color: #2c6c66;
@@ -100,8 +102,13 @@ let styles = new Component()
     overflow: hidden;
     border-left: solid 3px #9d8731;
     border-top: solid 1px #62afb3;
+    cursor: pointer;
+  }
+  .project-display:hover > .project-display-name {
+    background-color: #0005;
   }
   .project-display-name {
+    transition: all 0.5s cubic-bezier(0.08, 0.82, 0.17, 1);
     padding-top: 1em;
     padding-bottom: 1em;
     font-size: large;
@@ -115,6 +122,53 @@ let styles = new Component()
   .project-display-desc {
     color: #9e9ec6;
     margin-top: 1em;
+  }
+  .project-display-payload {
+    transition: all 0.5s cubic-bezier(0.08, 0.82, 0.17, 1);
+    background-color: #0003;
+    padding: 1em;
+    border-radius: 0.25em;
+    border: none;
+    color: #9e9ec6;
+    margin: 1em;
+  }
+  .project-display-build {
+    transition: all 0.5s cubic-bezier(0.08, 0.82, 0.17, 1);
+    background-color: #0003;
+    padding: 1em;
+    border-radius: 0.25em;
+    border: none;
+    color: #9e9ec6;
+  }
+  .project-display-button-area {
+    padding: 1em;
+  }
+  .project-display-payload:focus, .project-display-build:hover {
+    background-color: #0005;
+    color: #e3c260;
+  }
+  .project-display-build:active {
+    background-color: #0004;
+  }
+  .project-display-build:disabled {
+    background-color: #3a2329;
+  }
+  .project-display-load {
+    animation-duration: 1s;
+    animation-name: rotate;
+    animation-iteration-count: infinite;
+    background-size: 25% !important;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+    flex: 0.5;
+  }
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
   `)
   .mount(document.head);
@@ -170,20 +224,15 @@ statusBar.setStatus("running-builds", "1300")
 .setStatus("builds-to-date", "41,230,768")
 .setStatus("up-time", "x");
 
-let begin = Date.now() - 13 * 60 * 60 * 1000;
-let enlapsed = 0;
-let enlapsedDate: Date;
+let begin = Date.now() - 25 * 60 * 60 * 1000;
 let enlapsedMsg = "";
 
 setInterval(()=>{
-  enlapsed = Date.now() - begin;
-  enlapsedDate = new Date(enlapsed);
-  enlapsedMsg = "";
-  enlapsedMsg += enlapsedDate.getDay() + "d ";
-  enlapsedMsg += enlapsedDate.getHours() + "h ";
-  enlapsedMsg += enlapsedDate.getMinutes() + "m ";
-  enlapsedMsg += enlapsedDate.getSeconds() + "s ";  
-
+  enlapsedMsg = DateHelper.format(
+    DateHelper.enlapsed(
+      begin, Date.now()
+    ), false, false
+  );
   statusBar.setStatus("up-time", enlapsedMsg);
 }, 1000);
 
@@ -197,6 +246,12 @@ if (API.isUserSignedIn()) {
   for (let info of  await API.getUserProjects ()) {
     projectPanel.setProject(info.name, info);
   }
+
+  projectPanel.onBuildClicked ( async(id, name)=>{
+    projectPanel.disable(name);
+    let resp = await API.requestBuild(id);
+    projectPanel.enable (name);
+  });
 } else {
   let temp = new Panel()
   .setStyleItem("flex", 10)
